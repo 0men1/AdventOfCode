@@ -5,52 +5,9 @@
 #include <set>
 #include <sstream>
 #include <vector>
-
 using namespace std;
 
-vector<string> grid;
-
-struct PathInfo
-{
-    vector<pair<int, int>> positions;
-    vector<char> values;
-};
-
-vector<pair<int, int>> directions = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
-
-int rows;
-int cols;
-
-map<pair<int, int>, int> scores;
-
-void dfs(int row, int col, set<pair<int, int>> &visited, vector<pair<int, int>>& currentPath, vector<vector<pair<int, int>>> &allPaths)
-{
-    visited.insert({row, col});
-
-    currentPath.push_back({row, col});
-
-    if (grid[row][col] == '9') {
-        allPaths.push_back(currentPath);
-        scores[currentPath[0]]++;  // Store unique endpoint
-    }
-
-    for (const auto& [x, y] : directions) {
-        int dx = row + x;
-        int dy = col + y;
-
-
-        if ((dx >= 0 && dx < rows && dy >= 0 && dy < cols)) {
-            int valNew = grid[dx][dy] - '0';
-            int val = grid[row][col] - '0';
-            if (visited.find({dx, dy}) == visited.end() && (val+1 == valNew)) {
-                dfs(dx, dy, visited, currentPath, allPaths);
-            }
-        }
-    }
-
-    visited.erase({row, col});
-    currentPath.pop_back();
-}
+unordered_map<string, string> mult_cache;
 
 int main(int argc, char *argv[])
 {
@@ -65,36 +22,88 @@ int main(int argc, char *argv[])
         cerr << "There was an error opening file";
         return 1;
     }
+
+    // Initial vector to store the input values
+    vector<string> numbers;
     string line;
-
-    vector<string> map;
-
+    
+    // Read input into the vector
     while (getline(file, line))
     {
-        grid.push_back(line);
-    }
-
-    set<pair<int, int>> visited;
-    vector<pair<int, int>> currPath;
-    vector<vector<pair<int, int>>> allPaths;
-
-    rows = grid.size();
-    cols = grid[0].size();
-
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (grid[i][j] == '0') dfs(i, j, visited, currPath, allPaths);
+        stringstream ss(line);
+        string word;
+        while (ss >> word)
+        {
+            numbers.push_back(word);
         }
     }
 
-    int sumScores = 0;
+    // Process the numbers for 75 iterations
+    for (int i = 0; i < 75; ++i)
+    {
+        // Create a new vector for this iteration's results
+        vector<string> next_iteration;
+        // Reserve space to prevent reallocations
+        next_iteration.reserve(numbers.size() * 2);
 
-    for (const auto& [p, n] : scores) {
-        cout << p.first << ", " << p.second << ": " << n << endl;
-        sumScores += n;
+        // Process each number in order
+        for (const string& value : numbers)
+        {
+            if (value == "0")
+            {
+                next_iteration.push_back("1");
+            }
+            else if (value.length() % 2 == 0)
+            {
+                int half = value.length() / 2;
+                string fh = value.substr(0, half);
+                string sh = value.substr(half, half);
+                
+                // Process first half
+                size_t first_non_zero_fh = fh.find_first_not_of('0');
+                if (first_non_zero_fh != string::npos)
+                {
+                    fh = fh.substr(first_non_zero_fh);
+                }
+                else
+                {
+                    fh = "0";
+                }
+                
+                // Process second half
+                size_t first_non_zero_sh = sh.find_first_not_of('0');
+                if (first_non_zero_sh != string::npos)
+                {
+                    sh = sh.substr(first_non_zero_sh);
+                }
+                else
+                {
+                    sh = "0";
+                }
+                
+                // Add both halves in order
+                next_iteration.push_back(fh);
+                next_iteration.push_back(sh);
+            }
+            else
+            {
+                if (mult_cache.find(value) != mult_cache.end()) {
+                    next_iteration.push_back(mult_cache[value]);
+                } else {
+                    long long newVal = stoll(value);
+                    newVal *= 2024;
+                    string result = to_string(newVal);
+                    mult_cache[value] = result;
+                    next_iteration.push_back(result);
+                }
+            }
+        }
+        
+        // Replace the old vector with the new one
+        numbers = std::move(next_iteration);
+        cout << i << endl;
     }
 
-    cout << sumScores << endl;
-
+    cout << numbers.size() << endl;
     return 0;
 }
